@@ -6,6 +6,8 @@
 #include <thread>
 #include <Windows.h>
 
+#define konst 4
+
 struct TETRO
 {
 public:
@@ -28,11 +30,11 @@ public:
 	bool isCollide(int x, int y, std::wstring map)
 	{
 		bool ret = 0;
-		for (int nx = 0; nx < 4; nx++)
+		for (int nx = 0; nx < konst; nx++)
 		{
-			for (int ny = 0; ny < 4; ny++)
+			for (int ny = 0; ny < konst; ny++)
 			{
-				if (tets.c_str()[ny * 4 + nx] != ' ')
+				if (tets.c_str()[ny * konst + nx] != ' ')
 				{
 					if (map.c_str()[(yPos + ny + y) * 12 + (xPos + nx + x)] != ' ')
 						ret = 1;
@@ -51,11 +53,11 @@ public:
 		if (l)
 		{
 			int nt = 3;
-			for (int ny = 0; ny < 4; ny++)
+			for (int ny = 0; ny < konst; ny++)
 			{
-				for (int nx = 0; nx < 4; nx++)
+				for (int nx = 0; nx < konst; nx++)
 				{
-					tmp[ny * 4 + nx] = this->tets[nt + nx * 4];
+					tmp[ny * konst + nx] = this->tets[nt + nx * konst];
 				}
 				nt--;
 			}
@@ -63,11 +65,11 @@ public:
 		else
 		{
 			int nt = 12;
-			for (int ny = 0; ny < 4; ny++)
+			for (int ny = 0; ny < konst; ny++)
 			{
-				for (int nx = 0; nx < 4; nx++)
+				for (int nx = 0; nx < konst; nx++)
 				{
-					tmp[ny * 4 + nx] = this->tets[nt - nx * 4];
+					tmp[ny * konst + nx] = this->tets[nt - nx * konst];
 				}
 				nt++;
 			}
@@ -106,15 +108,15 @@ public:
 
 		// Red
 		block[3] += L"    ";
-		block[3] += L"    ";
 		block[3] += L" ZZ ";
 		block[3] += L"  ZZ";
+		block[3] += L"    ";
 
 		// Green
 		block[4] += L"    ";
-		block[4] += L"    ";
 		block[4] += L" SS ";
 		block[4] += L"SS  ";
+		block[4] += L"    ";
 
 		// Purple
 		block[5] += L"    ";
@@ -132,7 +134,10 @@ public:
 		SetConsoleWindowInfo(hOriConsole, TRUE, &oriConsoleInfo.srWindow);
 		SetConsoleScreenBufferSize(hOriConsole, oriConsoleInfo.dwSize);
 
-		TETRIS::CreateConsole(48, 84, 8, 8);
+		nMapWidth = 12;
+		nMapHeight = 25;
+
+		TETRIS::CreateConsole(nMapWidth * konst, (nMapHeight - 4) * konst, 8, 8);
 	}
 	~TETRIS()
 	{
@@ -188,18 +193,37 @@ public:
 	{
 		if (x >= 0 && x < nScreenWidth && y >= 0 && y < nScreenHeight)
 		{
-			int pos = y * nScreenWidth * 4 + x * 4;
-			if (c == 'I')col = 0x0009;
-			if (c == 'L')col = 0x0006;
-			if (c == 'J')col = 0x0001;
-			if (c == 'Z')col = 0x0004;
-			if (c == 'S')col = 0x000A;
-			if (c == 'T')col = 0x000D;
-			if (c == 'O')col = 0x000E;
-			if (c >= 'A' && c <= 'Z')c = 0x2588;
-			for (int ny = 0; ny < 4; ny++)
+			switch (c)
 			{
-				for (int nx = 0; nx < 4; nx++)
+				case 'I':
+					col = 0x0009;
+					break;
+				case 'L':
+					col = 0x0006;
+					break;
+				case 'J':
+					col = 0x0001;
+					break;
+				case 'Z':
+					col = 0x0004;
+					break;
+				case 'S':
+					col = 0x000A;
+					break;
+				case 'T':
+					col = 0x000D;
+					break;
+				case 'O':
+					col = 0x000E;
+					break;
+				default:
+					break;
+			}
+			int pos = y * nScreenWidth * 4 + x * 4;
+			if (c >= 'A' && c <= 'Z')c = 0x2588;
+			for (int ny = 0; ny < konst; ny++)
+			{
+				for (int nx = 0; nx < konst; nx++)
 				{				
 					bufScreen[pos + nx + nScreenWidth * ny].Char.UnicodeChar = c;
 					bufScreen[pos + nx + nScreenWidth * ny].Attributes = col;
@@ -285,20 +309,20 @@ public:
 				if (bUpdate)
 				{
 					int c = 0;
-					for (int ny = 3; ny >= 0; ny--)
+					for (int ny = konst - 1; ny >= 0; ny--)
 					{
 						int tmp = ny + curY + c;
-						if (tmp > 23)
+						if (tmp > nMapHeight-2)
 							continue;
-						if (map[tmp * 12 + 1] == '=')
+						if (map[tmp * nMapWidth + 1] == '=')
 						{
 							c++;
 							while (tmp > 0)
 							{
-								for (int nx = 1; nx < 11; nx++)
+								for (int nx = 1; nx < nMapWidth - 1; nx++)
 								{
-									map[tmp * 12 + nx] = map[(tmp - 1) * 12 + nx];
-									map[(tmp - 1) * 12 + nx] = ' ';
+									map[tmp * nMapWidth + nx] = map[(tmp - 1) * nMapWidth + nx];
+									map[(tmp - 1) * nMapWidth + nx] = ' ';
 								}
 								tmp--;
 							}
@@ -380,12 +404,12 @@ public:
 							{
 								char c = tetro->getChar(nx, ny);
 								if (c != ' ')
-									map[(curY + ny) * 12 + (tetro->xPos + nx)] = c;
+									map[(curY + ny) * nMapWidth + (tetro->xPos + nx)] = c;
 							}
 						}
 						for (int ny = 0; ny < 4 && tetro->yPos + ny < 24; ny++)
 						{
-							int tmp = (curY + ny) * 12;
+							int tmp = (curY + ny) * nMapWidth;
 							bool b = 1;
 							for (int nx = 1; nx < 11; nx++)
 							{
@@ -435,11 +459,11 @@ public:
 				/**************************************************************/
 
 				// Draw map
-				for (int nx = 0; nx < 12; nx++)
+				for (int nx = 0; nx < nMapWidth; nx++)
 				{
-					for (int ny = 0; ny < 21; ny++)
+					for (int ny = 0; ny < nMapHeight - 4; ny++)
 					{
-						blit(nx, ny, map[(ny+4) * 12 + nx]);
+						blit(nx, ny, map[(ny + 4) * nMapWidth + nx]);
 					}
 				}
 
@@ -510,6 +534,8 @@ private:
 	bool bBlock;
 	bool bUpdate;
 	int nIter;
+	int nMapWidth;
+	int nMapHeight;
 	std::pair<int, int> blocks[7];
 };
 
