@@ -137,7 +137,7 @@ public:
 		nMapWidth = 12;
 		nMapHeight = 25;
 
-		TETRIS::CreateConsole(nMapWidth * konst, (nMapHeight - 4) * konst, 8, 8);
+		TETRIS::CreateConsole((nMapWidth + 1) * konst, (nMapHeight - 4) * konst, 8, 8);
 	}
 	~TETRIS()
 	{
@@ -237,6 +237,7 @@ public:
 		bKPress = 0;
 		bRot = 0;
 		bUpdate = 0;
+		bPause = 0;
 		bool bDMove = 0;
 
 		int curY;
@@ -332,8 +333,16 @@ public:
 				}
 
 				// Handle Input
+				// Pause and unpause
+				if ((GetAsyncKeyState((unsigned short)'P') & 0x8000) && !bKPress && !bUpdate)
+				{
+					bKPress = 1;
+					tp4 = tp2;
+					bPause = !bPause;
+				}
+
 				// Down
-				if ((GetAsyncKeyState((unsigned short)'S') & 0x8000) && !bKPress && !bUpdate)
+				if ((GetAsyncKeyState((unsigned short)'S') & 0x8000) && !bKPress && !bUpdate && !bPause)
 				{
 					bKPress = 1;
 					bDMove = 1;
@@ -341,7 +350,7 @@ public:
 				}
 
 				// Right
-				if ((GetAsyncKeyState((unsigned short)'D') & 0x8000) && !bKPress && !bUpdate)
+				if ((GetAsyncKeyState((unsigned short)'D') & 0x8000) && !bKPress && !bUpdate && !bPause)
 				{
 					bKPress = 1;
 					tp3 += std::chrono::milliseconds(100);
@@ -352,10 +361,10 @@ public:
 				}
 
 				// Left
-				if ((GetAsyncKeyState((unsigned short)'A') & 0x8000) && !bKPress && !bUpdate)
+				if ((GetAsyncKeyState((unsigned short)'A') & 0x8000) && !bKPress && !bUpdate && !bPause)
 				{
 					bKPress = 1;
-					tp3 += std::chrono::milliseconds(00);
+					tp3 += std::chrono::milliseconds(100);
 					if (tp2 < tp3)tp3 = tp2;
 					tp4 = tp2;
 					if (!tetro->isCollide(-1, 0, this->map))
@@ -363,7 +372,7 @@ public:
 				}
 
 				// Rotate Right
-				if ((GetAsyncKeyState((unsigned short)'E') & 0x8000) && !bRot && !bUpdate)
+				if ((GetAsyncKeyState((unsigned short)'E') & 0x8000) && !bRot && !bUpdate && !bPause)
 				{
 					bRot = 1;
 					tp3 += std::chrono::milliseconds(00);
@@ -373,7 +382,7 @@ public:
 				}
 
 				// Rotate Left
-				if ((GetAsyncKeyState((unsigned short)'Q') & 0x8000) && !bRot && !bUpdate)
+				if ((GetAsyncKeyState((unsigned short)'Q') & 0x8000) && !bRot && !bUpdate && !bPause)
 				{
 					bRot = 1;
 					tp3 += std::chrono::milliseconds(00);
@@ -383,7 +392,7 @@ public:
 				}
 
 				// Move down every second
-				if (tp3 + std::chrono::seconds(1) <= tp2 && !bUpdate)
+				if (tp3 + std::chrono::seconds(1) <= tp2 && !bUpdate && !bPause)
 				{
 					bDMove = 1;
 				}
@@ -533,6 +542,7 @@ private:
 	bool bRot;
 	bool bBlock;
 	bool bUpdate;
+	bool bPause;
 	int nIter;
 	int nMapWidth;
 	int nMapHeight;
