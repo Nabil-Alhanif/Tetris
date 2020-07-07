@@ -114,16 +114,16 @@ public:
 
 		// Green
 		block[4] += L"    ";
+		block[4] += L"  SS";
 		block[4] += L" SS ";
-		block[4] += L"SS  ";
 		block[4] += L"    ";
 
 		// Purple
 		block[5] += L"    ";
-		block[5] += L" T  ";
-		block[5] += L"TTT ";
+		block[5] += L"  T ";
+		block[5] += L" TTT";
 		block[5] += L"    ";
-		
+
 		// Yellow
 		block[6] += L"    ";
 		block[6] += L" OO ";
@@ -137,7 +137,7 @@ public:
 		nMapWidth = 12;
 		nMapHeight = 25;
 
-		TETRIS::CreateConsole((nMapWidth + 1) * konst, (nMapHeight - 4) * konst, 8, 8);
+		TETRIS::CreateConsole((nMapWidth + 5) * konst, (nMapHeight - 4) * konst, 8, 8);
 	}
 	~TETRIS()
 	{
@@ -195,36 +195,36 @@ public:
 		{
 			switch (c)
 			{
-				case 'I':
-					col = 0x0009;
-					break;
-				case 'L':
-					col = 0x0006;
-					break;
-				case 'J':
-					col = 0x0001;
-					break;
-				case 'Z':
-					col = 0x0004;
-					break;
-				case 'S':
-					col = 0x000A;
-					break;
-				case 'T':
-					col = 0x000D;
-					break;
-				case 'O':
-					col = 0x000E;
-					break;
-				default:
-					break;
+			case 'I':
+				col = 0x0009;
+				break;
+			case 'L':
+				col = 0x0006;
+				break;
+			case 'J':
+				col = 0x0001;
+				break;
+			case 'Z':
+				col = 0x0004;
+				break;
+			case 'S':
+				col = 0x000A;
+				break;
+			case 'T':
+				col = 0x000D;
+				break;
+			case 'O':
+				col = 0x000E;
+				break;
+			default:
+				break;
 			}
 			int pos = y * nScreenWidth * 4 + x * 4;
 			if (c >= 'A' && c <= 'Z')c = 0x2588;
 			for (int ny = 0; ny < konst; ny++)
 			{
 				for (int nx = 0; nx < konst; nx++)
-				{				
+				{
 					bufScreen[pos + nx + nScreenWidth * ny].Char.UnicodeChar = c;
 					bufScreen[pos + nx + nScreenWidth * ny].Attributes = col;
 				}
@@ -280,12 +280,19 @@ public:
 
 		bBlock = 1;
 		nIter = 0;
-		for (int i = 0; i < 7; i++)
+		for (int i = 0; i < 2; i++)
 		{
-			blocks[i] = { std::rand(),i };
+			for (int j = 0; j < 7; j++)
+			{
+				tmp[j] = { std::rand(),j };
+			}
+			std::sort(tmp, tmp + 7);
+			for (int j = 0; j < 7; j++)
+			{
+				blocks[j + i * 7] = tmp[j].second;
+			}
+			tetro = new TETRO(block[blocks[nIter]]);
 		}
-		std::sort(blocks, blocks + 7);
-		tetro = new TETRO(block[blocks[nIter].second]);
 
 		/**************************************************************/
 
@@ -313,7 +320,7 @@ public:
 					for (int ny = konst - 1; ny >= 0; ny--)
 					{
 						int tmp = ny + curY + c;
-						if (tmp > nMapHeight-2)
+						if (tmp > nMapHeight - 2)
 							continue;
 						if (map[tmp * nMapWidth + 1] == '=')
 						{
@@ -401,7 +408,7 @@ public:
 				if (bDMove)
 				{
 					tp3 = tp2;
-						curY = tetro->yPos;
+					curY = tetro->yPos;
 					if (!tetro->isCollide(0, 1, this->map))
 						tetro->yPos++;
 					else
@@ -448,16 +455,32 @@ public:
 				{
 					bBlock = 1;
 					nIter++;
-					if (nIter > 6)
+					nIter %= 14;
+					if (nIter == 0)
 					{
-						nIter = 0;
 						for (int i = 0; i < 7; i++)
 						{
-							blocks[i] = { std::rand(),i };
+							tmp[i] = { std::rand(),i };
 						}
-						std::sort(blocks, blocks + 7);
+						sort(tmp, tmp + 7);
+						for (int i = 0; i < 7; i++)
+						{
+							blocks[i + 7] = tmp[i].second;
+						}
 					}
-					tetro = new TETRO(block[blocks[nIter].second]);
+					else if (nIter == 7)
+					{
+						for (int i = 0; i < 7; i++)
+						{
+							tmp[i] = { std::rand(),i };
+						}
+						sort(tmp, tmp + 7);
+						for (int i = 0; i < 7; i++)
+						{
+							blocks[i] = tmp[i].second;
+						}
+					}
+					tetro = new TETRO(block[blocks[nIter]]);
 				}
 
 				if (tp4 + std::chrono::milliseconds(200) <= tp2)
@@ -492,9 +515,9 @@ public:
 				SetConsoleTitle(title);
 				WriteConsoleOutput(hConsole, bufScreen, { (short)nScreenWidth, (short)nScreenHeight }, { 0,0 }, &srRectWin);
 			}
-			for (int nx = 0; nx*4 < nScreenWidth; nx++)
+			for (int nx = 0; nx * 4 < nScreenWidth; nx++)
 			{
-				for (int ny = 0; ny*4 < nScreenHeight; ny++)
+				for (int ny = 0; ny * 4 < nScreenHeight; ny++)
 				{
 					blit(nx, ny, ' ');
 				}
@@ -546,7 +569,8 @@ private:
 	int nIter;
 	int nMapWidth;
 	int nMapHeight;
-	std::pair<int, int> blocks[7];
+	std::pair<int, int> tmp[7];
+	int blocks[14];
 };
 
 bool TETRIS::bGameRunning;
