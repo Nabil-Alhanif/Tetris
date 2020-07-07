@@ -339,6 +339,19 @@ public:
 					bUpdate = 0;
 				}
 
+				// Display next 4 blocks
+				for (int i = nIter + 1; i <= nIter + 4; i++)
+				{
+					int yPp = (i - nIter - 1) * 5;
+					for (int nx = 0; nx < 4; nx++)
+					{
+						for (int ny = 0; ny < 4; ny++)
+						{
+							blit(nx + nMapWidth, ny + yPp, block[blocks[i % 14]][ny * 4 + nx]);
+						}
+					}
+				}
+
 				// Handle Input
 				// Pause and unpause
 				if ((GetAsyncKeyState((unsigned short)'P') & 0x8000) && !bKPress && !bUpdate)
