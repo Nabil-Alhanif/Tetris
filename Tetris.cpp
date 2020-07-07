@@ -291,8 +291,8 @@ public:
 			{
 				blocks[j + i * 7] = tmp[j].second;
 			}
-			tetro = new TETRO(block[blocks[nIter]]);
 		}
+		tetro = new TETRO(block[blocks[nIter]]);
 
 		/**************************************************************/
 
