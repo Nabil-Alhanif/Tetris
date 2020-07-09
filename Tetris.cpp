@@ -10,9 +10,9 @@
 
 namespace exUtil
 {
-	bool print(CHAR_INFO* cif, size_t mW, const wchar_t* wcar, int sWidth = 30, int x = 0, int y = 0)
+	bool print(CHAR_INFO* cif, size_t mW, const std::wstring wcar, int sWidth = 30, int x = 0, int y = 0)
 	{
-		size_t sie = std::wcslen(wcar);
+		size_t sie = wcar.length();
 		for (unsigned int i = 0; i < sie; i++)
 		{
 			cif[(y + (i / mW)) * sWidth + ((i % mW) + x)].Char.UnicodeChar = wcar[i];
@@ -27,6 +27,7 @@ struct TETRO
 public:
 	int xPos;
 	int yPos;
+	int nScore;
 	std::wstring tets;
 
 	TETRO()
@@ -35,19 +36,18 @@ public:
 		this->tets += L"    ";
 		this->tets += L"    ";
 		this->tets += L"    ";
-		this->xPos = 2;
-		this->yPos = 0;
+		this->reset();
 	}
 	TETRO(std::wstring ws)
 	{
 		this->tets = ws;
-		this->xPos = 2;
-		this->yPos = 0;
+		this->reset();
 	}
 	void reset()
 	{
 		this->xPos = 2;
 		this->yPos = 0;
+		this->nScore = 5;
 	}
 	char getChar(int x, int y)
 	{
@@ -268,6 +268,7 @@ public:
 		bPause = 0;
 		bHold = 0;
 		bNext = 1;
+		nScore = 0;
 		bool bDMove = 0;
 
 		int curY;
@@ -496,7 +497,10 @@ public:
 					tp3 = tp2;
 					curY = tetro->yPos;
 					if (!tetro->isCollide(0, 1, this->map))
+					{
 						tetro->yPos++;
+						tetro->nScore++;
+					}
 					else
 					{
 						bBlock = 0;
@@ -532,10 +536,15 @@ public:
 							std::this_thread::sleep_for(std::chrono::milliseconds(500));
 							bGameRunning = 0;
 						}
+						this->nScore += tetro->nScore;
 						delete tetro;
 					}
 					bDMove = 0;
 				}
+
+				// Show Score
+				exUtil::print(bufScreen, 8, L"Score: ", nScreenWidth, 1, 0);
+				exUtil::print(bufScreen, 8, std::to_wstring(this->nScore), nScreenWidth, 0, 1);
 
 				// Hold blocks
 				exUtil::print(bufScreen, 8, L"HOLD: ", nScreenWidth, 1, 6);
@@ -653,21 +662,25 @@ private:
 	static bool bGameRunning;
 
 	std::wstring map;
+	int nMapWidth;
+	int nMapHeight;
+
 	std::wstring block[7];
 	TETRO* tetro;
+	std::pair<int, int> tmp[7];
+	int blocks[14];
+	int nIter;
+
 	TETRO* hold;
+	bool bHold;
+
 	bool bKPress;
 	bool bRot;
 	bool bBlock;
 	bool bUpdate;
 	bool bPause;
-	bool bHold;
 	bool bNext;
-	int nIter;
-	int nMapWidth;
-	int nMapHeight;
-	std::pair<int, int> tmp[7];
-	int blocks[14];
+	int nScore;
 };
 
 bool TETRIS::bGameRunning;
