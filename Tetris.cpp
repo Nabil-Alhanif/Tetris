@@ -8,6 +8,20 @@
 
 #define konst 4
 
+namespace exUtil
+{
+	bool print(CHAR_INFO* cif, size_t mW, const wchar_t* wcar, int sWidth = 30, int x = 0, int y = 0)
+	{
+		size_t sie = std::wcslen(wcar);
+		for (unsigned int i = 0; i < sie; i++)
+		{
+			cif[(y + (i / mW)) * sWidth + ((i % mW) + x)].Char.UnicodeChar = wcar[i];
+			cif[(y + (i / mW)) * sWidth + ((i % mW) + x)].Attributes = 0x000f;
+		}
+		return 1;
+	}
+}
+
 struct TETRO
 {
 public:
@@ -15,11 +29,25 @@ public:
 	int yPos;
 	std::wstring tets;
 
+	TETRO()
+	{
+		this->tets += L"    ";
+		this->tets += L"    ";
+		this->tets += L"    ";
+		this->tets += L"    ";
+		this->xPos = 2;
+		this->yPos = 0;
+	}
 	TETRO(std::wstring ws)
 	{
-		tets = ws;
-		xPos = 2;
-		yPos = 0;
+		this->tets = ws;
+		this->xPos = 2;
+		this->yPos = 0;
+	}
+	void reset()
+	{
+		this->xPos = 2;
+		this->yPos = 0;
 	}
 	char getChar(int x, int y)
 	{
@@ -137,7 +165,7 @@ public:
 		nMapWidth = 12;
 		nMapHeight = 25;
 
-		TETRIS::CreateConsole((nMapWidth + 5) * konst, (nMapHeight - 4) * konst, 8, 8);
+		TETRIS::CreateConsole((nMapWidth + 7) * konst, (nMapHeight - 4) * konst, 8, 8);
 	}
 	~TETRIS()
 	{
@@ -189,7 +217,7 @@ public:
 		SetConsoleCtrlHandler((PHANDLER_ROUTINE)CloseHandler, TRUE);
 		return 1;
 	}
-	void blit(int x, int y, short c = 0x2588, short col = 0x000F)
+	void blit(int x, int y, int px, int py, short c = 0x2588, short col = 0x000F)
 	{
 		if (x >= 0 && x < nScreenWidth && y >= 0 && y < nScreenHeight)
 		{
@@ -219,11 +247,11 @@ public:
 			default:
 				break;
 			}
-			int pos = y * nScreenWidth * 4 + x * 4;
+			int pos = y * nScreenWidth * py + x * px;
 			if (c >= 'A' && c <= 'Z')c = 0x2588;
-			for (int ny = 0; ny < konst; ny++)
+			for (int ny = 0; ny < py; ny++)
 			{
-				for (int nx = 0; nx < konst; nx++)
+				for (int nx = 0; nx < px; nx++)
 				{
 					bufScreen[pos + nx + nScreenWidth * ny].Char.UnicodeChar = c;
 					bufScreen[pos + nx + nScreenWidth * ny].Attributes = col;
@@ -238,6 +266,8 @@ public:
 		bRot = 0;
 		bUpdate = 0;
 		bPause = 0;
+		bHold = 0;
+		bNext = 1;
 		bool bDMove = 0;
 
 		int curY;
@@ -293,6 +323,7 @@ public:
 			}
 		}
 		tetro = new TETRO(block[blocks[nIter]]);
+		hold = nullptr;
 
 		/**************************************************************/
 
@@ -347,7 +378,10 @@ public:
 					{
 						for (int ny = 0; ny < 4; ny++)
 						{
-							blit(nx + nMapWidth, ny + yPp, block[blocks[i % 14]][ny * 4 + nx]);
+							if (bNext)
+								blit(nx + nMapWidth + 2, ny + yPp, konst, konst, block[blocks[i % 14]][ny * 4 + nx]);
+							else 
+								blit(nx + nMapWidth + 2, ny + yPp, konst, konst, ' ');
 						}
 					}
 				}
@@ -361,12 +395,46 @@ public:
 					bPause = !bPause;
 				}
 
+				// Exit
+				if (GetAsyncKeyState((unsigned short)'X') & 0x8000)
+					bGameRunning = 0;
+
+				// Hold
+				if ((GetAsyncKeyState((unsigned short)'C') & 0x8000) && !bHold && !bPause)
+				{
+					bHold = 1;
+					if (hold)
+					{
+						std::wstring tmp = hold->tets;
+						hold = tetro;
+						tetro->reset();
+						tetro = new TETRO(tmp);
+					}
+					else
+					{
+						hold = tetro;
+						tetro->reset();
+						nIter++;
+						tetro = new TETRO(block[blocks[nIter]]);
+					}
+				}
+
+				// Show/Unshow next 4 blocks
+				if ((GetAsyncKeyState((unsigned short)'T') & 0x8000) && !bKPress && !bPause)
+				{
+					bKPress = 1;
+					tp4 = tp2;
+					bNext = !bNext;
+					sAppName = std::to_wstring(bNext);
+				}
+
 				// Down
 				if ((GetAsyncKeyState((unsigned short)'S') & 0x8000) && !bKPress && !bUpdate && !bPause)
 				{
 					bKPress = 1;
 					bDMove = 1;
 					tp4 = tp2;
+					tp3 = tp2;
 				}
 
 				// Right
@@ -411,6 +479,11 @@ public:
 					tetro->rotate(1, 0, this->map);
 				}
 
+				if (tp4 + std::chrono::milliseconds(200) <= tp2)
+					bKPress = 0;
+				if (tp5 + std::chrono::milliseconds(150) <= tp2)
+					bRot = 0;
+
 				// Move down every second
 				if (tp3 + std::chrono::seconds(1) <= tp2 && !bUpdate && !bPause)
 				{
@@ -427,6 +500,7 @@ public:
 					else
 					{
 						bBlock = 0;
+						nIter++;
 						for (int nx = 0; nx < 4; nx++)
 						{
 							for (int ny = 0; ny < 4; ny++)
@@ -463,43 +537,49 @@ public:
 					bDMove = 0;
 				}
 
+				// Hold blocks
+				exUtil::print(bufScreen, 8, L"HOLD: ", nScreenWidth, 1, 6);
+				if (hold)
+				{
+					for (int nx = 0; nx < 4; nx++)
+					{
+						for (int ny = 0; ny < 4; ny++)
+						{
+							blit(nx, ny + 5, 2, 2, hold->getChar(nx, ny));
+						}
+					}
+				}
+
 				// Regenrate tetris block
 				if (!bBlock)
 				{
 					bBlock = 1;
-					nIter++;
+					bHold = 0;
 					nIter %= 14;
-					if (nIter == 0)
+					if (!(nIter % 7))
 					{
 						for (int i = 0; i < 7; i++)
 						{
 							tmp[i] = { std::rand(),i };
 						}
 						sort(tmp, tmp + 7);
-						for (int i = 0; i < 7; i++)
+						if (nIter == 0)
 						{
-							blocks[i + 7] = tmp[i].second;
+							for (int i = 0; i < 7; i++)
+							{
+								blocks[i + 7] = tmp[i].second;
+							}
 						}
-					}
-					else if (nIter == 7)
-					{
-						for (int i = 0; i < 7; i++)
+						else if (nIter == 7)
 						{
-							tmp[i] = { std::rand(),i };
-						}
-						sort(tmp, tmp + 7);
-						for (int i = 0; i < 7; i++)
-						{
-							blocks[i] = tmp[i].second;
+							for (int i = 0; i < 7; i++)
+							{
+								blocks[i] = tmp[i].second;
+							}
 						}
 					}
 					tetro = new TETRO(block[blocks[nIter]]);
 				}
-
-				if (tp4 + std::chrono::milliseconds(200) <= tp2)
-					bKPress = 0;
-				if (tp5 + std::chrono::milliseconds(150) <= tp2)
-					bRot = 0;
 
 				/**************************************************************/
 
@@ -508,7 +588,7 @@ public:
 				{
 					for (int ny = 0; ny < nMapHeight - 4; ny++)
 					{
-						blit(nx, ny, map[(ny + 4) * nMapWidth + nx]);
+						blit(nx + 2, ny, konst, konst, map[(ny + 4) * nMapWidth + nx]);
 					}
 				}
 
@@ -518,7 +598,7 @@ public:
 					for (int ny = 0; ny < 4; ny++)
 					{
 						if (ny + tetro->yPos - 4 >= 0 && tetro->getChar(nx, ny) != ' ')
-							blit(nx + tetro->xPos, ny + tetro->yPos - 4, tetro->tets[ny * 4 + nx]);
+							blit(nx + tetro->xPos + 2, ny + tetro->yPos - 4, konst, konst, tetro->tets[ny * 4 + nx]);
 					}
 				}
 
@@ -532,13 +612,14 @@ public:
 			{
 				for (int ny = 0; ny * 4 < nScreenHeight; ny++)
 				{
-					blit(nx, ny, ' ');
+					blit(nx, ny, konst, konst, ' ');
 				}
 			}
 			WriteConsoleOutput(hConsole, bufScreen, { (short)nScreenWidth, (short)nScreenHeight }, { 0,0 }, &srRectWin);
 			// Free memory
 			if (bufScreen)delete[] bufScreen;
 			if (tetro)delete tetro;
+			delete hold;
 			SetConsoleActiveScreenBuffer(hOriConsole);
 		}
 	}
@@ -574,11 +655,14 @@ private:
 	std::wstring map;
 	std::wstring block[7];
 	TETRO* tetro;
+	TETRO* hold;
 	bool bKPress;
 	bool bRot;
 	bool bBlock;
 	bool bUpdate;
 	bool bPause;
+	bool bHold;
+	bool bNext;
 	int nIter;
 	int nMapWidth;
 	int nMapHeight;
